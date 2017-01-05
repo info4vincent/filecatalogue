@@ -20,6 +20,7 @@ import (
 // 8KB
 const filechunk = 8192
 
+// CollectionInfo Contains information of a disk and a reference to a backup disk
 type CollectionInfo struct {
 	DBName           string
 	FullRootName     string
@@ -39,9 +40,7 @@ type NodeInfo struct {
 	BackupLocation string
 }
 
-func writeToDb(session *mgo.Session, nodeInfo NodeInfo) {
-	c := session.DB(Collection.DBName).C(Collection.CollectionName)
-
+func findBackup(session *mgo.Session, nodeInfo *NodeInfo) {
 	c2 := session.DB(Collection.DBName).C(Collection.BackupCollection)
 
 	var result NodeInfo
@@ -54,32 +53,16 @@ func writeToDb(session *mgo.Session, nodeInfo NodeInfo) {
 	} else {
 		log.Fatal(err2)
 	}
+}
+
+func writeToDb(session *mgo.Session, nodeInfo NodeInfo) {
+	c := session.DB(Collection.DBName).C(Collection.CollectionName)
 
 	_, err := c.UpsertId(nodeInfo.FullName, &nodeInfo)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
-
-// func findDuplicates(session *mgo.Session) {
-// 	c1 := session.DB(Collection.DBName).C(Collection.CollectionName)
-
-// 	var results []NodeInfo
-
-// 	err := c1.Find(nil).All(&results)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-
-// 	result := NodeInfo{}
-// 	for _, r := range results {
-// 		err = c2.Find(bson.M{"sha1": r.Sha1}).One(&result)
-// 		if err != nil {
-// 			log.Fatal(err)
-// 		}
-// 		result.BackupLocation = fmt.Sprintf("%s::%s", Collection.BackupCollection, r.FullName)
-// 	}
-// }
 
 // TraverseDir Search in dir and searches for files.
 func TraverseDir(session *mgo.Session, dirName string) {
@@ -183,13 +166,6 @@ func connectDB() *mgo.Session {
 		os.Exit(1)
 	}
 
-	// c := session.DB("test").C("people")
-	// err = c.Insert(&Person{"Ale", "+55 53 8116 9639"},
-	// 	&Person{"Cla", "+55 53 8402 8510"})
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
 	dbnames, err := session.DB("").CollectionNames()
 	if err != nil {
 		fmt.Println("Couldn't query for collections names: ", err)
@@ -203,8 +179,9 @@ func connectDB() *mgo.Session {
 
 func main() {
 	session := connectDB()
+
 	defer session.Close()
-	//initDB()
+
 	TraverseDir(session, Collection.FullRootName)
 
 	Collection = CollectionInfo{DBName: "filecatalogue", FullRootName: "e:/Testme2", CollectionName: "TestMe2", BackupCollection: "TestMe"}
