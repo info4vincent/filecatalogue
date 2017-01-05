@@ -108,7 +108,6 @@ func calcSHA1(session *mgo.Session, aFile string) {
 	blocks := uint64(math.Ceil(float64(filesize) / float64(filechunk)))
 
 	// Start hash
-	//hash := md5.New()
 	hash := sha1.New()
 
 	// Check each block
@@ -133,14 +132,15 @@ func calcSHA1(session *mgo.Session, aFile string) {
 	nodeInfo := NodeInfo{FullName: fullfileName, Name: info.Name(), FileSize: filesize}
 	nodeInfo.Sha1 = fmt.Sprintf("%x", hash.Sum(nil))
 
+	findBackup(session, &nodeInfo)
+
 	writeToDb(session, nodeInfo)
 }
 
 func connectDB() *mgo.Session {
-	//uri := os.Getenv("MONGODB_URL")
-	uri := "mongodb://mongodb1584:YXo7XJZu4uT22axJ0ceECSgsggh4SpwFDhKHU6wy2nIW28gEwMqi78UEEo9cbfY265y9ABoYLC2nWdEV2JvjqQ==@mongodb1584.documents.azure.com:10250"
+	uri := os.Getenv("MONGODB_URL")
 	if uri == "" {
-		fmt.Println("No connection string provided - set MONGODB_URL")
+		fmt.Println("No connection string provided - set MONGODB_URL = mongodb://{user}:{password}@mongodb.documents.azure.com:{port}")
 		os.Exit(1)
 	}
 	uri = strings.TrimSuffix(uri, "?ssl=true")
