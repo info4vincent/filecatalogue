@@ -40,6 +40,26 @@ type NodeInfo struct {
 	BackupLocation string
 }
 
+// Collections Gets Collections to process or gives initial collection
+func Collections(session *mgo.Session) []CollectionInfo {
+	c := session.DB(Collection.DBName).C("Settings")
+
+	var collections []CollectionInfo
+	err := c.Find(nil).All(&collections)
+	if (err == nil || err.Error() != "not found") && (len(collections) > 0) {
+		return collections
+	} else if (err != nil && err.Error() == "not found") || (err == nil && len(collections) == 0) {
+		err2 := c.Insert(Collection)
+		if err2 != nil {
+			log.Fatal(err2)
+		}
+		collections = Collections(session)
+	} else {
+		log.Fatal(err)
+	}
+	return collections
+}
+
 func findBackup(session *mgo.Session, nodeInfo *NodeInfo) {
 	c2 := session.DB(Collection.DBName).C(Collection.BackupCollection)
 
@@ -182,9 +202,8 @@ func main() {
 
 	defer session.Close()
 
-	TraverseDir(session, Collection.FullRootName)
-
-	Collection = CollectionInfo{DBName: "filecatalogue", FullRootName: "e:/Testme2", CollectionName: "TestMe2", BackupCollection: "TestMe"}
-
-	TraverseDir(session, Collection.FullRootName)
+	for _, collection := range Collections(session) {
+		Collection = collection
+		TraverseDir(session, collection.FullRootName)
+	}
 }
